@@ -22,39 +22,106 @@ template.innerHTML = `
     width: 30%;
    }
 </style>
+
 <div class="todoItem">
+  <input type="checkbox" id="checkbox"/>
   <slot></slot>
   <div class="actionButtonsContainer">
-    <button id="done-button">done</button>
+    <!-- <button id="done-button">done</button> -->
     <button id="delete-button">delete</button>
   </div>
 </div>
 `;
+
 class TodoItem extends HTMLElement {
-  _shadow = this.attachShadow({ mode: "open" });
+  #shadow = this.attachShadow({ mode: "open" });
+  #id: string;
+  #checkbox: HTMLInputElement | null;
+  _checked: boolean;
+  _text: string;
+
   constructor() {
     super();
-    this._shadow.append(template.content.cloneNode(true));
+    this.#shadow.append(template.content.cloneNode(true));
+    this.#id = "";
+    this.#checkbox = this.#shadow.querySelector("#checkbox");
+    this._checked = false;
+    this._text = "";
   }
 
   connectedCallback() {
-    this._shadow.addEventListener("click", this.#deleteTodoItem.bind(this));
-  }
+    this.#id = this.getAttribute("item-id") ?? "";
+    this._checked = store.getItemById(this.#id)?.done ?? false;
 
-  #deleteTodoItem(e: Event) {
-    if (e instanceof MouseEvent && e.target instanceof HTMLButtonElement) {
-      const id = e.target.id;
-      switch (id) {
-        case "delete-button":
-          store.deleteItem(id);
-          break;
+    const checkbox = this.#shadow.querySelector("#checkbox");
+    const deleteBtn = this.#shadow.querySelector("#delete-button");
+    // const doneBtn = this.#shadow.querySelector("#done-button");
 
-        default:
-          break;
-      }
+    // if (doneBtn) {
+    //   doneBtn.addEventListener("click", (e) => {
+    //     e.preventDefault();
+    //     this.dispatchEvent(new CustomEvent("onToggle", { detail: this.#id }));
+    //   });
+    // }
+
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.dispatchEvent(new CustomEvent("onRemove", { detail: this.#id }));
+      });
     }
-    // this.shadowRoot?.removeChild(this.shadowRoot.querySelector("#delete-button"))
+
+    if (checkbox) {
+      checkbox.addEventListener("click", (e) => {
+        // e.preventDefault();
+        this.dispatchEvent(new CustomEvent("onToggle", { detail: this.#id }));
+      });
+    }
+    this.#render();
   }
+
+  disconnectCallback() {
+    console.log("unmounted");
+    this.#shadow.removeEventListener("click", (e) => {
+      console.log(e);
+    });
+  }
+
+  static get observedAttributes() {
+    return ["text"];
+  }
+  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    console.log(name, oldValue, newValue);
+    this._text = newValue;
+  }
+
+  set checked(value) {
+    this._checked = Boolean(value);
+  }
+
+  get checked() {
+    return this.hasAttribute("checked");
+  }
+
+  #render() {
+    // console.log(this._checked, store.getItemById(this.#id));
+    if (this._checked) {
+      this.#checkbox?.setAttribute("checked", "");
+    } else {
+      this.#checkbox?.removeAttribute("checked");
+    }
+  }
+
+  // static get observedAttributes() {
+  //   return ["checked"];
+  // }
+  //
+  // attributeChangedCallback(name: string, old: string, newVal: string) {
+  //   const checkbox = this.#shadow.querySelector("#checkbox");
+  //   // const isChecked = store.getItemById(this.#id)?.done;
+  //   checkbox.checked = this.checked;
+  //   console.log(name, old, newVal);
+  // }
 }
 
 customElements.define("todo-item", TodoItem);

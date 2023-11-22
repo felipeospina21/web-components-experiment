@@ -1,6 +1,6 @@
 const list = [{ id: "some-rand-id", name: "task 1", done: false }];
 
-type Item = { id: string; name: string; done: boolean };
+export type Item = { id: string; name: string; done: boolean };
 
 export class Store {
   #store: Array<Item> = [];
@@ -13,14 +13,26 @@ export class Store {
     return this.#store;
   }
 
-  addItem(item: Omit<Item, "id">) {
-    const id = crypto.randomUUID();
-    const newItem = { ...item, id };
-    this.#store.push(newItem);
+  getItemById(itemId: string) {
+    return this.#store.find((element) => element.id === itemId);
+  }
+
+  addItem(item: Item) {
+    this.#store.push(item);
   }
 
   deleteItem(itemId: string) {
     const newStore = this.#store.filter((item) => item.id !== itemId);
+    this.#store = newStore;
+  }
+
+  updateItem(updatedItem: Item) {
+    const newStore = this.#store.map((item) => {
+      if (item.id === updatedItem.id) {
+        return updatedItem;
+      }
+      return item;
+    });
     this.#store = newStore;
   }
 }
