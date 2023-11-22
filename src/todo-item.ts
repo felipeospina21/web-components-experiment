@@ -1,5 +1,3 @@
-import { store } from "./store";
-
 const template = document.createElement("template");
 template.innerHTML = `
 <style>
@@ -15,20 +13,53 @@ template.innerHTML = `
     padding: 0 0.5rem;
    }
 
-   .actionButtonsContainer {
+  .todoText{
+    display:flex;
+    flex:1;
+    margin:0 1rem;
+    font-size:1.25rem;
+    }
+
+  .done {
+      text-decoration:line-through;
+      font-style:italic;
+		  color: #888;
+    }
+
+  .actionButtonsContainer {
     display: flex;
     justify-content:space-around;
     align-items: center;
-    width: 30%;
+    margin: 0 1rem;
    }
+
+  button {
+    all:unset;
+    display: flex;
+    align-items: center;
+  }
+
+  button:hover {
+      cursor:pointer;
+  }
+
+  img {
+    width:20px;
+  }
+
+  input {
+    width:1.25rem;
+    height:1.25rem;
+  }
 </style>
 
 <div class="todoItem">
   <input type="checkbox" id="checkbox"/>
-  <slot></slot>
+  <slot class="todoText"></slot>
   <div class="actionButtonsContainer">
-    <!-- <button id="done-button">done</button> -->
-    <button id="delete-button">delete</button>
+    <button id="delete-button">
+      <img src="/trash-can-32.png"/> 
+    </button>
   </div>
 </div>
 `;
@@ -36,33 +67,17 @@ template.innerHTML = `
 class TodoItem extends HTMLElement {
   #shadow = this.attachShadow({ mode: "open" });
   #id: string;
-  #checkbox: HTMLInputElement | null;
-  _checked: boolean;
-  _text: string;
+  isChecked: boolean;
 
   constructor() {
     super();
     this.#shadow.append(template.content.cloneNode(true));
     this.#id = "";
-    this.#checkbox = this.#shadow.querySelector("#checkbox");
-    this._checked = false;
-    this._text = "";
-  }
-
-  connectedCallback() {
-    this.#id = this.getAttribute("item-id") ?? "";
-    this._checked = store.getItemById(this.#id)?.done ?? false;
+    this.isChecked = false;
 
     const checkbox = this.#shadow.querySelector("#checkbox");
     const deleteBtn = this.#shadow.querySelector("#delete-button");
-    // const doneBtn = this.#shadow.querySelector("#done-button");
-
-    // if (doneBtn) {
-    //   doneBtn.addEventListener("click", (e) => {
-    //     e.preventDefault();
-    //     this.dispatchEvent(new CustomEvent("onToggle", { detail: this.#id }));
-    //   });
-    // }
+    const todoItem = this.#shadow.querySelector(".todoItem");
 
     if (deleteBtn) {
       deleteBtn.addEventListener("click", (e) => {
@@ -73,55 +88,25 @@ class TodoItem extends HTMLElement {
 
     if (checkbox) {
       checkbox.addEventListener("click", (e) => {
-        // e.preventDefault();
+        const input = e.target as HTMLInputElement;
+        this.isChecked = input.checked;
+        this.toggleDoneClass(todoItem);
         this.dispatchEvent(new CustomEvent("onToggle", { detail: this.#id }));
       });
     }
-    this.#render();
   }
 
-  disconnectCallback() {
-    console.log("unmounted");
-    this.#shadow.removeEventListener("click", (e) => {
-      console.log(e);
-    });
-  }
-
-  static get observedAttributes() {
-    return ["text"];
-  }
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    console.log(name, oldValue, newValue);
-    this._text = newValue;
-  }
-
-  set checked(value) {
-    this._checked = Boolean(value);
-  }
-
-  get checked() {
-    return this.hasAttribute("checked");
-  }
-
-  #render() {
-    // console.log(this._checked, store.getItemById(this.#id));
-    if (this._checked) {
-      this.#checkbox?.setAttribute("checked", "");
+  toggleDoneClass(todoItem: Element | null) {
+    if (this.isChecked) {
+      todoItem?.classList.add("done");
     } else {
-      this.#checkbox?.removeAttribute("checked");
+      todoItem?.classList.remove("done");
     }
   }
 
-  // static get observedAttributes() {
-  //   return ["checked"];
-  // }
-  //
-  // attributeChangedCallback(name: string, old: string, newVal: string) {
-  //   const checkbox = this.#shadow.querySelector("#checkbox");
-  //   // const isChecked = store.getItemById(this.#id)?.done;
-  //   checkbox.checked = this.checked;
-  //   console.log(name, old, newVal);
-  // }
+  connectedCallback() {
+    this.#id = this.getAttribute("item-id") ?? "";
+  }
 }
 
 customElements.define("todo-item", TodoItem);

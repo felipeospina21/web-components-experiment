@@ -7,18 +7,18 @@ template.innerHTML = `
       width:fit;
     }
     input{ 
-		  padding: 1rem 1.5rem;
+		  padding: 0.5rem;
 		  font-size: 1.5rem;
 		  min-width: 5rem; /* safari/FF != chrome, so normalize */
 		  outline: none;
 		  border: none;
-		  border-radius: 4px;
-		  box-shadow: var(--elev-2); 
+		  border-bottom: 1px solid black;
+		  background-color:transparent;
 	  }
 
 	  input::placeholder{
 		  color: #888;
-		  font-family: roboto;
+		  /* font-family: roboto; */
 		  font-weight: 300;
 	  }
   </style>
