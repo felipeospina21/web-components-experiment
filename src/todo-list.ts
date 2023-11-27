@@ -36,6 +36,7 @@ template.innerHTML = `
 class TodoList extends HTMLElement {
   #shadow = this.attachShadow({ mode: "open" });
   #section: HTMLElement | null = null;
+  items: Item[];
 
   constructor() {
     super();
@@ -47,58 +48,94 @@ class TodoList extends HTMLElement {
     }
 
     this.#section = this.#shadow.querySelector("section");
+    this.items = [];
 
     this.#render();
   }
 
-  addItem(e: Event) {
+  static get observedAttributes() {
+    return ["loading"];
+  }
+
+  get loading() {
+    const attr = this.getAttribute("loading");
+    if (attr) {
+      return JSON.parse(attr);
+    }
+    return false;
+  }
+
+  set loading(v) {
+    this.setAttribute("loading", JSON.stringify(v));
+  }
+
+  attributeChangedCallback() {
+    this.#render();
+  }
+
+  async connectedCallback() {
+    this.loading = true;
+    const items = await store.getItems();
+    this.items = items;
+    this.loading = false;
+  }
+
+  async addItem(e: Event) {
     if ("detail" in e) {
-      store.addItem({
-        id: crypto.randomUUID(),
-        name: e.detail as string,
-        done: false,
+      await store.addItem({
+        message: e.detail as string,
       });
       this.#render();
     }
   }
 
-  removeItem(e: Event) {
+  async removeItem(e: Event) {
     if ("detail" in e) {
-      store.deleteItem(e.detail as string);
+      await store.deleteItem(e.detail as string);
       const todoItem = this.#shadow.querySelector(`[item-id='${e.detail}']`);
       todoItem?.remove();
     }
   }
 
-  toggleItem(e: Event) {
+  async toggleItem(e: Event) {
     if ("detail" in e) {
       const item = store.getItemById(e.detail as string);
       if (item) {
-        store.updateItem({ ...item, done: !item.done });
+        await store.updateItem({ done: !item.done }, item["item_id"]);
       }
     }
   }
 
-  #render() {
+  async #render() {
     const section = this.#section;
-    const items = store.getItems();
 
-    if (section) {
-      items.forEach((element) => {
-        const todoItem = this.#shadow.querySelector(
-          `[item-id='${element.id}']`,
-        );
-        if (!todoItem) {
-          this.#createTodoItem(section, element);
-        }
-      });
+    if (this.loading) {
+      const div = document.createElement("div");
+      div.innerText = `Loading...`;
+      div.setAttribute("loader", "true");
+      section?.appendChild(div);
+    } else {
+      if (section) {
+        const loader = this.#shadow.querySelector("[loader='true']");
+        loader?.remove();
+
+        this.items.forEach((element) => {
+          const todoItem = this.#shadow.querySelector(
+            `[item-id='${element["item_id"]}']`,
+          );
+          if (!todoItem) {
+            this.#createTodoItem(section, element);
+          }
+        });
+      }
     }
   }
 
   #createTodoItem(section: HTMLElement, item: Item) {
     const todoItem = document.createElement("todo-item");
-    todoItem.textContent = item.name;
-    todoItem.setAttribute("item-id", item.id);
+    todoItem.textContent = item.message;
+    todoItem.setAttribute("item-id", item["item_id"] ?? "");
+    todoItem?.setAttribute("done", String(item.done));
     todoItem.addEventListener("onRemove", this.removeItem.bind(this));
     todoItem.addEventListener("onToggle", this.toggleItem.bind(this));
     section?.appendChild(todoItem);

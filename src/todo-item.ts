@@ -67,6 +67,8 @@ template.innerHTML = `
 class TodoItem extends HTMLElement {
   #shadow = this.attachShadow({ mode: "open" });
   #id: string;
+  #todoItem: Element | null;
+  #checkbox: HTMLInputElement | null;
   isChecked: boolean;
 
   constructor() {
@@ -74,38 +76,55 @@ class TodoItem extends HTMLElement {
     this.#shadow.append(template.content.cloneNode(true));
     this.#id = "";
     this.isChecked = false;
+    this.#todoItem = this.#shadow.querySelector(".todoItem");
+    this.#checkbox = this.#shadow.querySelector("#checkbox");
 
-    const checkbox = this.#shadow.querySelector("#checkbox");
     const deleteBtn = this.#shadow.querySelector("#delete-button");
-    const todoItem = this.#shadow.querySelector(".todoItem");
 
     if (deleteBtn) {
-      deleteBtn.addEventListener("click", (e) => {
-        e.preventDefault();
+      deleteBtn.addEventListener("click", () => {
         this.dispatchEvent(new CustomEvent("onRemove", { detail: this.#id }));
       });
     }
 
-    if (checkbox) {
-      checkbox.addEventListener("click", (e) => {
+    if (this.#checkbox) {
+      this.#checkbox.addEventListener("change", (e) => {
         const input = e.target as HTMLInputElement;
-        this.isChecked = input.checked;
-        this.toggleDoneClass(todoItem);
+        this.setAttribute("done", String(input.checked));
         this.dispatchEvent(new CustomEvent("onToggle", { detail: this.#id }));
       });
     }
   }
 
-  toggleDoneClass(todoItem: Element | null) {
-    if (this.isChecked) {
-      todoItem?.classList.add("done");
-    } else {
-      todoItem?.classList.remove("done");
+  static get observedAttributes() {
+    return ["done"];
+  }
+
+  attributeChangedCallback(name: string, _: string, newVal: string) {
+    if (name === "done") {
+      if (newVal === "true") {
+        this.#todoItem?.classList.add("done");
+      } else {
+        this.#todoItem?.classList.remove("done");
+      }
     }
   }
 
   connectedCallback() {
     this.#id = this.getAttribute("item-id") ?? "";
+    this.isChecked = this.getAttribute("done") === "true" ? true : false;
+
+    this.#render();
+  }
+
+  #render() {
+    if (this.isChecked) {
+      this.#todoItem?.classList.add("done");
+      this.#checkbox?.setAttribute("checked", "");
+    } else {
+      this.#todoItem?.classList.remove("done");
+      this.#checkbox?.removeAttribute("checked");
+    }
   }
 }
 
